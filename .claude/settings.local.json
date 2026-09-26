@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -la .env .env.example 2>&1; sed -E 's/\\(PASSWORD|SECRET\\)=.*/\\\\1=***hidden***/' .env 2>&1)",
+      "Bash(node scripts/setup-db.js)",
+      "Bash(host db.artlabss.com)",
+      "Bash(nc -vz -G 8 db.artlabss.com 3306)",
+      "Bash(curl -s -m 8 https://api.ipify.org)",
+      "Bash(nc -vz -G 8 db.artlabss.com 4664)",
+      "Bash(node -e ' *)",
+      "Bash(npm run *)",
+      "Bash(npx oxlint *)",
+      "Bash(node --check src/models/report.model.js)",
+      "Bash(node -e \"require\\('./src/routes'\\)\")",
+      "Bash(node -e \"const {amountInWords:w}=require\\('./src/utils/amountInWords'\\);console.log\\(w\\(1\\),'|',w\\(2\\),'|',w\\(37750\\)\\)\")",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('bcrypt'\\);console.log\\('bcrypt native binding OK'\\)\")",
+      "Bash(openssl s_client -connect mail.quantumhash.me:993 -servername mail.quantumhash.me)",
+      "Bash(openssl x509 *)",
+      "Bash(grep -rnE '\\\\$\\\\{[^}]*\\\\}' src/models src/services src/controllers)",
+      "Bash(cp /tmp/dbcert_1.pem certs/db.artlabss.com-router.pem)",
+      "Bash(rm -f /tmp/dbcert_*.pem)",
+      "Bash(chmod 600 .env)",
+      "Bash(node -e \"console.log\\('bcrypt',require\\('bcrypt/package.json'\\).version,'| node-cron',require\\('node-cron/package.json'\\).version\\)\")",
+      "Bash(npm audit *)",
+      "Bash(node -e \"require\\('./src/app'\\);require\\('./src/scheduler/reminder.scheduler'\\);console.log\\('backend loads OK \\(strong secrets, cors, db pinning accepted\\)'\\)\")",
+      "Bash(JWT_ACCESS_SECRET=change_me_access_secret node -e \"require\\('./src/config/env'\\)\")",
+      "Bash(CORS_ORIGIN='*' node -e \"require\\('./src/config/env'\\)\")",
+      "Bash(NEWPASS='Sohon#098' node -e ' *)"
+    ]
+  }
+}

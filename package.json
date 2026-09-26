@@ -1,0 +1,29 @@
+{
+  "name": "dukan-api",
+  "version": "1.0.0",
+  "description": "Dukan shop management API — Node.js + Express + MySQL + JWT/RBAC",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "hash-password": "node scripts/hash-password.js",
+    "setup-db": "node scripts/setup-db.js",
+    "reset-password": "node scripts/reset-password.js"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "imapflow": "^2.0.7",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "mysql2": "^3.11.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.0.10",
+    "zod": "^3.23.8"
+  }
+}
