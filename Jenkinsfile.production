@@ -1,0 +1,159 @@
+// ============================================================
+// Bapan Sardar
+// Dukan — backend (Express API) + frontend (React/Vite) deploy
+// ============================================================
+pipeline {
+    agent any
+
+    options {
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    environment {
+        DEPLOY_DIR    = '/home/qeduin/public_html/dukan'
+        REPO_DIR      = '/home/qeduin/public_html/dukan/Dukan'
+        BACKEND_DIR   = '/home/qeduin/public_html/dukan/Dukan'
+        FRONTEND_DIR  = '/home/qeduin/public_html/dukan/Dukan/frontend'
+        REPO_URL      = 'git@github.com:MotoBwi/Dukan.git'
+
+        BACKEND_ENV   = '/var/lib/jenkins/env-files/dukan-backend.env'
+        FRONTEND_ENV  = '/var/lib/jenkins/env-files/dukan-frontend.env'
+
+        BACKEND_APP   = 'dukan-backend'
+        FRONTEND_APP  = 'dukan-frontend'
+        FRONTEND_PORT = '4012'
+    }
+
+    triggers {
+        githubPush()
+    }
+
+    stages {
+
+        stage('Pull Latest Code') {
+            steps {
+                sh '''
+                    set -e
+                    if [ -d "${REPO_DIR}/.git" ]; then
+                        echo "Repo exists — pulling latest"
+                        cd ${REPO_DIR}
+                        git fetch origin
+                        git checkout main
+                        git reset --hard origin/main
+                        git clean -fd
+                    else
+                        echo "Fresh clone"
+                        mkdir -p ${DEPLOY_DIR}
+                        cd ${DEPLOY_DIR}
+                        git clone -b main ${REPO_URL} Dukan
+                    fi
+                '''
+            }
+        }
+
+        stage('Copy .env Files') {
+            steps {
+                sh '''
+                    set -e
+                    for f in "${BACKEND_ENV}" "${FRONTEND_ENV}"; do
+                        [ -f "$f" ] || { echo "Missing env file: $f"; exit 1; }
+                    done
+                    cp "${BACKEND_ENV}"  ${BACKEND_DIR}/.env
+                    cp "${FRONTEND_ENV}" ${FRONTEND_DIR}/.env
+                    # .env holds DB, JWT and SMTP secrets: owner-only
+                    chmod 600 ${BACKEND_DIR}/.env ${FRONTEND_DIR}/.env
+                '''
+            }
+        }
+
+        stage('Install Backend') {
+            steps {
+                sh '''
+                    set -e
+                    cd ${BACKEND_DIR}
+                    npm ci --omit=dev
+                '''
+            }
+        }
+
+        stage('Build Frontend') {
+            steps {
+                sh '''
+                    set -e
+                    cd ${FRONTEND_DIR}
+                    rm -rf dist
+                    npm ci
+                    # VITE_API_BASE_URL from the frontend .env is baked into the build here
+                    npm run build
+                '''
+            }
+        }
+
+        stage('Deploy Backend') {
+            steps {
+                sh '''
+                    set -e
+                    cd ${BACKEND_DIR}
+                    if pm2 describe ${BACKEND_APP} > /dev/null 2>&1; then
+                        pm2 reload ${BACKEND_APP} --update-env
+                    else
+                        pm2 start src/server.js --name ${BACKEND_APP} --cwd ${BACKEND_DIR}
+                    fi
+                '''
+            }
+        }
+
+        stage('Deploy Frontend') {
+            steps {
+                sh '''
+                    set -e
+                    cd ${FRONTEND_DIR}
+                    if pm2 describe ${FRONTEND_APP} > /dev/null 2>&1; then
+                        pm2 restart ${FRONTEND_APP}
+                    else
+                        pm2 serve ${FRONTEND_DIR}/dist ${FRONTEND_PORT} --name ${FRONTEND_APP} --spa
+                    fi
+                    pm2 save
+                '''
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                sh '''
+                    set -e
+                    BACKEND_PORT=$(grep -E '^PORT=' ${BACKEND_DIR}/.env | tail -1 | cut -d= -f2 | tr -d '"[:space:]')
+                    BACKEND_PORT=${BACKEND_PORT:-4000}
+
+                    for i in $(seq 1 20); do
+                        if curl -sf "http://127.0.0.1:${BACKEND_PORT}/health" > /dev/null; then
+                            echo "Backend is up on port ${BACKEND_PORT}"
+                            break
+                        fi
+                        if [ "$i" -eq 20 ]; then
+                            echo "Backend did not come up — last log lines:"
+                            pm2 logs ${BACKEND_APP} --lines 40 --nostream || true
+                            exit 1
+                        fi
+                        sleep 3
+                    done
+
+                    curl -sf "http://127.0.0.1:${FRONTEND_PORT}/" > /dev/null \
+                        && echo "Frontend is up on port ${FRONTEND_PORT}" \
+                        || { echo "Frontend is not responding on port ${FRONTEND_PORT}"; exit 1; }
+                '''
+            }
+        }
+
+    }
+
+    post {
+        success {
+            echo 'Dukan deployment successful! (backend + frontend)'
+        }
+        failure {
+            echo 'Dukan deployment failed! Check logs.'
+        }
+    }
+}
